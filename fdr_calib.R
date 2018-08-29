@@ -4,10 +4,14 @@
 wd = "d:/Murilo/exp_db/sugarcane/areao/fdr"
 plot_swc = F
 export   = F
+opt_gep  = T
+opt_fol  = F
+opt_ly   = T
 
 setwd(wd)
 
 source(paste0(wd,"/calib/fdr_calib/fdr_calib_f.R"))
+
 #--- Read FDR data
 fdr_db = read.csv("fdr_data.csv")
 
@@ -78,89 +82,99 @@ rc_depth = data.frame(depth_fdr   = seq(10,150,by = 10),
 #--- indexer
 rc_idx = merge(ret_curv,rc_depth,by=c("depth"))
 
-#-----------------------------
-#--- GEPEMA Diviner ----------
-#-----------------------------
 
-fdr_opt = fdr_gep
-fdr_opt$calib_meas_new = fdr_opt$orig_meas
+if(opt_gep){
+  
+  #-----------------------------
+  #--- GEPEMA Diviner ----------
+  #-----------------------------
+  
+  fdr_opt = fdr_gep
+  fdr_opt$calib_meas_new = fdr_opt$orig_meas
+  
+  if(opt_ly){
+    
+  }else{
+    
+    #--- Assuming that the frequency on top layers are equivalent to other layers:
+    #--- Assuming that the pmp ocurred at least once at 10 cm depth
+    min_sf = aggregate(sf ~ tube,fdr_opt[fdr_opt$depth==10,],min)
+    pmp_sf = quantile(min_sf$sf,0.25)[1]
+    
+    #--- Assuming that the saturation point is the maximun scaled frenquency measured on all series
+    max_sf = aggregate(sf ~ tube, fdr_opt,max)
+    sat_sf = quantile(max_sf$sf,0.75)[1]
+    
+    #--- Original parameters
+    a = unique(fdr_opt$A)
+    b = unique(fdr_opt$B)
+    c = unique(fdr_opt$C)
+    
+    #--- add paramters to a single vector
+    p = c(a,b,c)
+    
+    #--- opmtimze paramters
+    par_abc = optim(p,opt_fdr)
+    par_abc$par
+    
+    #--- Set of optmized parameters
+    a = par_abc$par[1]
+    b = par_abc$par[2]
+    c = par_abc$par[3]
+    
+    #--- Compute calibrated swc
+    fdr_opt$calib_meas_new = 10 ^ (log10((fdr_opt$sf-c)/a)/b)
+    
+    #--- write optimized parameters to original db
+    fdr_gep$A_calib = a
+    fdr_gep$B_calib = b
+    fdr_gep$C_calib = c
+    fdr_gep$calib_meas = fdr_opt$calib_meas_new
+  }
 
-#--- Assuming that the frequency on top layers are equivalent to other layers:
-#--- Assuming that the pmp ocurred at least once at 10 cm depth
-min_sf = aggregate(sf ~ tube,fdr_opt[fdr_opt$depth==10,],min)
-pmp_sf = quantile(min_sf$sf,0.25)[1]
-
-#--- Assuming that the saturation point is the maximun scaled frenquency measured on all series
-max_sf = aggregate(sf ~ tube, fdr_opt,max)
-sat_sf = quantile(max_sf$sf,0.75)[1]
-
-#--- Original parameters
-a = unique(fdr_opt$A)
-b = unique(fdr_opt$B)
-c = unique(fdr_opt$C)
-
-#--- add paramters to a single vector
-p = c(a,b,c)
-
-#--- opmtimze paramters
-par_abc = optim(p,opt_fdr)
-par_abc$par
-
-#--- Set of optmized parameters
-a = par_abc$par[1]
-b = par_abc$par[2]
-c = par_abc$par[3]
-
-#--- Compute calibrated swc
-fdr_opt$calib_meas_new = 10 ^ (log10((fdr_opt$sf-c)/a)/b)
-
-#--- write optimized parameters to original db
-fdr_gep$A_calib = a
-fdr_gep$B_calib = b
-fdr_gep$C_calib = c
-fdr_gep$calib_meas = fdr_opt$calib_meas_new
-
+}
 
 #--------------------------
 
-fdr_opt = fdr_fol
-fdr_opt$calib_meas_new = fdr_opt$orig_meas
-
-#--- Assuming that the frequency on top layers are equivalent to other layers:
-#--- Assuming that the pmp ocurred at least once at 10 cm depth
-min_sf = aggregate(sf ~ tube,fdr_opt[fdr_opt$depth==10,],min)
-pmp_sf = quantile(min_sf$sf,0.25)[1]
-
-#--- Assuming that the saturation point is the maximun scaled frenquency measured on all series
-max_sf = aggregate(sf ~ tube, fdr_opt,max)
-sat_sf = quantile(max_sf$sf,0.75)[1]
-
-#--- Original parameters
-a = unique(fdr_opt$A)
-b = unique(fdr_opt$B)
-c = unique(fdr_opt$C)
-
-#--- add paramters to a single vector
-p = c(a,b,c)
-
-#--- opmtimze paramters
-par_abc = optim(p,opt_fdr)
-par_abc$par
-
-#--- Set of optmized parameters
-a = par_abc$par[1]
-b = par_abc$par[2]
-c = par_abc$par[3]
-
-#--- Compute calibrated swc
-fdr_opt$calib_meas_new = 10 ^ (log10((fdr_opt$sf-c)/a)/b)
-
-#--- write optimized parameters to original db
-fdr_fol$A_calib = a
-fdr_fol$B_calib = b
-fdr_fol$C_calib = c
-fdr_fol$calib_meas = fdr_opt$calib_meas_new
-
+if(opt_fol){
+  fdr_opt = fdr_fol
+  fdr_opt$calib_meas_new = fdr_opt$orig_meas
+  
+  #--- Assuming that the frequency on top layers are equivalent to other layers:
+  #--- Assuming that the pmp ocurred at least once at 10 cm depth
+  min_sf = aggregate(sf ~ tube,fdr_opt[fdr_opt$depth==10,],min)
+  pmp_sf = quantile(min_sf$sf,0.25)[1]
+  
+  #--- Assuming that the saturation point is the maximun scaled frenquency measured on all series
+  max_sf = aggregate(sf ~ tube, fdr_opt,max)
+  sat_sf = quantile(max_sf$sf,0.75)[1]
+  
+  #--- Original parameters
+  a = unique(fdr_opt$A)
+  b = unique(fdr_opt$B)
+  c = unique(fdr_opt$C)
+  
+  #--- add paramters to a single vector
+  p = c(a,b,c)
+  
+  #--- opmtimze paramters
+  par_abc = optim(p,opt_fdr)
+  par_abc$par
+  
+  #--- Set of optmized parameters
+  a = par_abc$par[1]
+  b = par_abc$par[2]
+  c = par_abc$par[3]
+  
+  #--- Compute calibrated swc
+  fdr_opt$calib_meas_new = 10 ^ (log10((fdr_opt$sf-c)/a)/b)
+  
+  #--- write optimized parameters to original db
+  fdr_fol$A_calib = a
+  fdr_fol$B_calib = b
+  fdr_fol$C_calib = c
+  fdr_fol$calib_meas = fdr_opt$calib_meas_new
+}
 
 #--------------------------
 
