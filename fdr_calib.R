@@ -92,7 +92,7 @@ if(opt_gep){
   fdr_opt = fdr_gep
   
   rswc_sf = data.frame(dp =          c( 10, 20, 30, 40, 50, 60, 70, 80, 90,100,110,120,130,140,150),
-                       rswc_sf_min = c(1.0,1.0,1.0,1.0,1.1,1.1,1.2,1.3,1.3,1.3,1.3,1.3,1.3,1.3,1.3),
+                       rswc_sf_min = c(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0),
                        rswc_sf_max = c(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0))
   
   if(opt_ly){
@@ -319,7 +319,7 @@ for(dp in l_dp){
 legend("topright",inset = 0.03,legend = l_dp,lt = rep(1,length(colors$colors)),col = as.character(colors$colors))
 
 #--- write optmized values
-write.csv(fdr_data_calib[,c("date","responsable","season","equip_owner","treat","tube","position","depth","orig_meas","A_calib","B_calib","C_calib","calib_meas")],file = "fdr_data_calib_v4.csv", row.names = F)
+write.csv(fdr_data_calib[,c("date","responsable","season","equip_owner","treat","tube","position","depth","orig_meas","A_calib","B_calib","C_calib","calib_meas")],file = "fdr_data_calib_v3.csv", row.names = F)
 colnames(fdr_data_calib)
 
 
