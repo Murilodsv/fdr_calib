@@ -90,20 +90,99 @@ if(opt_gep){
   #-----------------------------
   
   fdr_opt = fdr_gep
-  fdr_opt$calib_meas_new = fdr_opt$orig_meas
+  
+  rswc_sf = data.frame(dp =          c( 10, 20, 30, 40, 50, 60, 70, 80, 90,100,110,120,130,140,150),
+                       rswc_sf_min = c(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0),
+                       rswc_sf_max = c(1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0))
   
   if(opt_ly){
+    
+    #--- Assuming that the soil hydraulic properties is variable for different soil layers (Field Data)
+    
+    #--- Calibrate for each tube SF
+    l_tb = unique(fdr_opt$tube)
+    for(tb in l_tb){
+      
+      tb_dat = fdr_opt[fdr_opt$tube == tb,]
+      
+      message(paste("Calibrating tube",tb))
+      
+      #--- Calibrate for each depth SF
+      l_dp = unique(tb_dat$depth)
+      for(dp in l_dp){
+        
+        dp_dat = tb_dat[tb_dat$depth == dp,]
+        
+        #--- Min and Max SF
+        min_sf = min(tb_dat$sf)
+        max_sf = max(tb_dat$sf)
+        
+        #--- Min and Max SWC from Retention Curves data
+        swc_min = rc_idx[rc_idx$depth_fdr == dp & rc_idx$h == 15000,"swc"] * rswc_sf$rswc_sf_min[rswc_sf$dp == dp] * 100
+        swc_max = rc_idx[rc_idx$depth_fdr == dp & rc_idx$h ==    10,"swc"] * rswc_sf$rswc_sf_max[rswc_sf$dp == dp] * 100
+        
+        a = unique(dp_dat$A)
+        b = unique(dp_dat$B)
+        c = unique(dp_dat$C)
+        
+        p = c(a,b,c)
+        
+        #--- opmtimze paramters to fit c(min_sf,max_sf) ~ c(swc_min,swc_max)
+        par_abc = optim(p,opt_fdr)
+        par_abc$par
+        
+        #--- update to optmized parameters
+        dp_dat$A_calib = par_abc$par[1]
+        dp_dat$B_calib = par_abc$par[2]
+        dp_dat$C_calib = par_abc$par[3]
+        
+        #--- join results by depth
+        if(dp == l_dp[1]){
+          dp_dat_opt = dp_dat
+        }else{
+          dp_dat_opt = rbind(dp_dat_opt,dp_dat)
+        }
+      }
+      
+      #--- join results by tube
+      if(tb == l_tb[1]){
+        fdr_opt_ly = dp_dat_opt
+      }else{
+        fdr_opt_ly = rbind(fdr_opt_ly,dp_dat_opt)
+      }
+    }
+    
+    #--- compute calibrated swc
+    a = fdr_opt_ly$A_calib
+    b = fdr_opt_ly$B_calib
+    c = fdr_opt_ly$C_calib
+    sf= fdr_opt_ly$sf
+    
+    fdr_opt_ly$calib_meas = 10 ^ (log10((sf-c)/a)/b)
+    
+    #--- separate only new calibaration
+    fdr_opt = fdr_opt_ly[,c("date","hour","minute","tube","depth","A_calib","B_calib","C_calib","calib_meas")]
+    colnames(fdr_opt)[6:9] = paste0(colnames(fdr_opt)[6:9],"_new")
+    
+    #--- merge with fdr_gep
+    fdr_gep = merge(fdr_gep,fdr_opt, by = c("date","hour","minute","tube","depth"),sort = F)
+    
+    #--- remove duplicates
+    fdr_gep = fdr_gep[!duplicated(fdr_gep), ]
     
   }else{
     
     #--- Assuming that the frequency on top layers are equivalent to other layers:
     #--- Assuming that the pmp ocurred at least once at 10 cm depth
     min_sf = aggregate(sf ~ tube,fdr_opt[fdr_opt$depth==10,],min)
-    pmp_sf = quantile(min_sf$sf,0.25)[1]
+    min_sf = quantile(min_sf$sf,0.25)[1]
     
     #--- Assuming that the saturation point is the maximun scaled frenquency measured on all series
     max_sf = aggregate(sf ~ tube, fdr_opt,max)
-    sat_sf = quantile(max_sf$sf,0.75)[1]
+    max_sf = quantile(max_sf$sf,0.75)[1]
+    
+    swc_min = ret_curv$swc[ret_curv$depth==5 & ret_curv$h==15000] * 100 #--- assuming that the minimun swc was the wilting point at top layer
+    swc_max = max(ret_curv$swc) * 100                                   #--- assuming that the maximum swc was the maximum swc on retention curves analysis swc(10kpa)
     
     #--- Original parameters
     a = unique(fdr_opt$A)
@@ -113,7 +192,7 @@ if(opt_gep){
     #--- add paramters to a single vector
     p = c(a,b,c)
     
-    #--- opmtimze paramters
+    #--- opmtimze paramters to fit c(min_sf,max_sf) ~ c(swc_min,swc_max)
     par_abc = optim(p,opt_fdr)
     par_abc$par
     
