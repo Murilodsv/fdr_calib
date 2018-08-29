@@ -7,7 +7,7 @@ export   = F
 
 setwd(wd)
 
-source("fdr_calib_f.R")
+source(paste0(wd,"/calib/fdr_calib/fdr_calib_f.R"))
 #--- Read FDR data
 fdr_db = read.csv("fdr_data.csv")
 
