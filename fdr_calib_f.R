@@ -150,11 +150,11 @@ opt_fdr = function(p){
   c = p[3]
   
   #--- compute soil water content based on the minimum (pmp_sf) and maximum frequency (sat_sf) 
-  pmp = 10 ^ (log10((pmp_sf-c)/a)/b)
-  sat = 10 ^ (log10((sat_sf-c)/a)/b)
+  swc_min_fdr = 10 ^ (log10((min_sf-c)/a)/b)
+  swc_max_fdr = 10 ^ (log10((max_sf-c)/a)/b)
   
   #--- compute the rmse between the pmp and sat estimated and measured (ret_curv)
-  perf = mperf(sim = c(pmp,sat),obs = c(ret_curv$swc[ret_curv$depth==5 & ret_curv$h==15000], max(ret_curv$swc))*100,vnam = "SWC",dchart = F,outidx = "rmse")
+  perf = mperf(sim = c(swc_min_fdr,swc_max_fdr),obs = c(swc_min, swc_max),vnam = "SWC (%)",dchart = F,outidx = "rmse")
   return(perf$rmse)
 }
 
