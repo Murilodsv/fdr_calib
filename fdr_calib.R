@@ -32,7 +32,7 @@ export   = F
 opt_gep  = T
 opt_fol  = T
 opt_ly   = T
-data_suf = "v6"
+data_suf = "all"
 
 setwd(wd)
 
@@ -395,8 +395,6 @@ legend("topright",inset = 0.03,legend = l_dp,lt = rep(1,length(colors$colors)),c
 #--- write optmized values
 filename = paste0("fdr_data_calib_",data_suf,".csv")
 write.csv(fdr_data_calib,file = filename, row.names = F)
-
-
 message(paste("Calibration saved on file",filename))
 
 
